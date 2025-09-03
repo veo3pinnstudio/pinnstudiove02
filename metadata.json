@@ -1,0 +1,5 @@
+{
+  "name": "Veo 2 Multi-Prompt Video Generator",
+  "description": "An application to automatically generate videos using Google's Veo 2 model from a list of prompts, one per line. Users can start, stop, and download the generated videos.",
+  "requestFramePermissions": []
+}

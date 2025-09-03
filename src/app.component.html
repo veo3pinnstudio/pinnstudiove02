@@ -1,0 +1,138 @@
+
+<div class="min-h-screen bg-gray-900 text-gray-100 flex flex-col items-center p-4 sm:p-6 md:p-8">
+  <main class="w-full max-w-6xl mx-auto flex flex-col gap-8">
+    
+    <!-- Header -->
+    <header class="text-center">
+      <h1 class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-600">
+        Veo 2 Multi-Prompt Generator
+      </h1>
+      <p class="mt-2 text-lg text-gray-400">Generate multiple videos in sequence, one prompt per line.</p>
+    </header>
+
+    <!-- Configuration Section -->
+    <section class="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- API Key Input -->
+        <div>
+          <label for="apiKey" class="block text-sm font-medium text-gray-300 mb-2">Google AI API Key</label>
+          <input 
+            id="apiKey"
+            type="text" 
+            placeholder="Enter your API Key here"
+            [value]="apiKey()"
+            (input)="onApiKeyInput($event)"
+            [disabled]="isGenerating()"
+            class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 disabled:opacity-50"
+          />
+          <p class="text-xs text-gray-500 mt-2">Your API key is used directly in your browser and is not stored on any server.</p>
+        </div>
+        
+        <!-- Controls -->
+        <div class="flex flex-col justify-between">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Controls</label>
+            <div class="flex gap-4">
+              @if (!isGenerating()) {
+                <button 
+                  (click)="startGeneration()" 
+                  [disabled]="!canStart()"
+                  class="w-full px-6 py-2 font-semibold text-white bg-indigo-600 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500 transition-all duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed">
+                  Start Generating
+                </button>
+              } @else {
+                <button 
+                  (click)="stopGeneration()"
+                  class="w-full px-6 py-2 font-semibold text-white bg-red-600 rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500 transition-all duration-200">
+                  Stop
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Prompts Textarea -->
+        <div class="md:col-span-2">
+          <label for="prompts" class="block text-sm font-medium text-gray-300 mb-2">Prompts (One per line)</label>
+          <textarea 
+            id="prompts"
+            rows="8"
+            placeholder="A cinematic shot of a futuristic city at sunset&#10;A golden retriever puppy playing in a field of flowers&#10;An astronaut floating in space looking at Earth"
+            [value]="prompts()"
+            (input)="onPromptsInput($event)"
+            [disabled]="isGenerating()"
+            class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 resize-y disabled:opacity-50">
+          </textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results Section -->
+    <section>
+      @if (videoJobs().length > 0) {
+        <h2 class="text-2xl font-bold mb-4 text-gray-300">Generation Results</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          @for (job of videoJobs(); track job.id) {
+            <div class="bg-gray-800 rounded-2xl shadow-lg border border-gray-700 overflow-hidden flex flex-col">
+              <div class="p-5 flex-grow flex flex-col">
+                <p class="font-mono text-sm text-gray-400 mb-3 line-clamp-2" [title]="job.prompt">{{ job.prompt }}</p>
+
+                <div class="mt-auto flex-grow flex flex-col justify-center items-center">
+                  @switch (job.status) {
+                    @case ('generating') {
+                      <div class="flex flex-col items-center gap-4 text-center">
+                        <svg class="animate-spin h-10 w-10 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p class="text-indigo-300 font-medium text-sm">{{ job.progressMessage }}</p>
+                      </div>
+                    }
+                    @case ('completed') {
+                      <div class="w-full">
+                        @if(job.videoUrl) {
+                           <video [src]="job.videoUrl" class="w-full rounded-lg aspect-video" controls></video>
+                        }
+                      </div>
+                    }
+                    @case ('failed') {
+                      <div class="text-center text-red-400 bg-red-900/50 p-4 rounded-lg">
+                        <p class="font-bold">Generation Failed</p>
+                        <p class="text-xs mt-1">{{ job.error }}</p>
+                      </div>
+                    }
+                    @case ('pending') {
+                       <div class="text-gray-500">
+                         <p>Waiting in queue...</p>
+                       </div>
+                    }
+                    @case ('stopped') {
+                      <div class="text-yellow-400">
+                        <p>Generation Cancelled</p>
+                      </div>
+                    }
+                  }
+                </div>
+              </div>
+
+              @if (job.status === 'completed') {
+                <div class="p-4 bg-gray-800 border-t border-gray-700">
+                    <button 
+                      (click)="downloadVideo(job)"
+                      class="w-full flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-green-500 transition-colors duration-200">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                      </svg>
+                      Download Video
+                    </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+  </main>
+</div>
